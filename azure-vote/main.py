@@ -32,7 +32,7 @@ config_integration.trace_integrations(["requests"])
 # Logging
 logger = logging.getLogger(__name__) # Setup logger
 handler = AzureLogHandler(
-    connection_string="InstrumentationKey=f6500f5d-ca47-427b-aa32-860252dbb3be;IngestionEndpoint=https://westus-0.in.applicationinsights.azure.com/;LiveEndpoint=https://westus.livediagnostics.monitor.azure.com/;ApplicationId=f3501c93-c395-48e3-bdf4-b70b93268006"
+    connection_string="InstrumentationKey=f6500f5d-ca47-427b-aa32-860252dbb3be"
 )
 
 handler.setFormatter(logging.Formatter("%(traceId)s %(spanId)s %(message)s"))
@@ -40,15 +40,16 @@ handler.setFormatter(logging.Formatter("%(traceId)s %(spanId)s %(message)s"))
 logger.addHandler(handler)
 logger.addHandler(
     AzureEventHandler(
-        connection_string="InstrumentationKey=f6500f5d-ca47-427b-aa32-860252dbb3be;IngestionEndpoint=https://westus-0.in.applicationinsights.azure.com/;LiveEndpoint=https://westus.livediagnostics.monitor.azure.com/;ApplicationId=f3501c93-c395-48e3-bdf4-b70b93268006"
+        connection_string="InstrumentationKey=f6500f5d-ca47-427b-aa32-860252dbb3be"
     )
 )
 
 logger.setLevel(logging.INFO)
 
+# Metrics
 exporter = metrics_exporter.new_metrics_exporter(
     enable_standard_metrics=True,
-    connection_string="InstrumentationKey=f6500f5d-ca47-427b-aa32-860252dbb3be;IngestionEndpoint=https://westus-0.in.applicationinsights.azure.com/;LiveEndpoint=https://westus.livediagnostics.monitor.azure.com/;ApplicationId=f3501c93-c395-48e3-bdf4-b70b93268006",
+    connection_string="InstrumentationKey=f6500f5d-ca47-427b-aa32-860252dbb3be",
 ) # Setup exporter
 
 view_manager.register_exporter(exporter)
@@ -56,7 +57,7 @@ view_manager.register_exporter(exporter)
 # Tracing
 tracer = Tracer(
     exporter=AzureExporter(
-        connection_string="InstrumentationKey=f6500f5d-ca47-427b-aa32-860252dbb3be;IngestionEndpoint=https://westus-0.in.applicationinsights.azure.com/;LiveEndpoint=https://westus.livediagnostics.monitor.azure.com/;ApplicationId=f3501c93-c395-48e3-bdf4-b70b93268006"
+        connection_string="InstrumentationKey=f6500f5d-ca47-427b-aa32-860252dbb3be"
     ),
     sampler=ProbabilitySampler(1.0),
 ) # Setup tracer
@@ -67,7 +68,7 @@ app = Flask(__name__)
 middleware = FlaskMiddleware(
     app,
     exporter=AzureExporter(
-        connection_string="InstrumentationKey=f6500f5d-ca47-427b-aa32-860252dbb3be;IngestionEndpoint=https://westus-0.in.applicationinsights.azure.com/;LiveEndpoint=https://westus.livediagnostics.monitor.azure.com/;ApplicationId=f3501c93-c395-48e3-bdf4-b70b93268006"
+        connection_string="InstrumentationKey=f6500f5d-ca47-427b-aa32-860252dbb3be"
     ),
     sampler=ProbabilitySampler(rate=1.0),
 ) # Setup flask middleware
@@ -113,12 +114,12 @@ def index():
         vote1 = r.get(button1).decode('utf-8')
         # use tracer object to trace cat vote
         with tracer.span(name="Cats Vote") as span:
-            print("Cats Vote")
+            logger.info("Cats Vote")
             
         vote2 = r.get(button2).decode('utf-8')
         # use tracer object to trace dog vote
         with tracer.span(name="Dogs Vote") as span:
-            print("Dogs Vote")
+            logger.info("Dogs Vote")
 
         # Return index with values
         return render_template("index.html", value1=int(vote1), value2=int(vote2), button1=button1, button2=button2, title=title)
@@ -150,7 +151,14 @@ def index():
 
             # Get current values
             vote1 = r.get(button1).decode('utf-8')
+            properties = {"custom_dimensions": {"Cats Vote": vote1}}
+            # TODO: use logger object to log cat vote
+            logger.info("Cats Vote", extra=properties)
+
             vote2 = r.get(button2).decode('utf-8')
+            properties = {"custom_dimensions": {"Dogs Vote": vote2}}
+            # TODO: use logger object to log dog vote
+            logger.info("Dogs Vote", extra=properties)
 
             # Return results
             return render_template("index.html", value1=int(vote1), value2=int(vote2), button1=button1, button2=button2, title=title)
